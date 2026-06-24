@@ -23,6 +23,7 @@ export default function Home() {
   const [ergebnis, setErgebnis] = useState<Ergebnis | null>(null);
   const [historie, setHistorie] = useState<Ergebnis[]>([]);
   const [userId, setUserId] = useState<string | null>(null);
+  const [authGeprueft, setAuthGeprueft] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -31,6 +32,7 @@ export default function Home() {
       } else {
         setUserId(data.session.user.id);
         ladeHistorie();
+        setAuthGeprueft(true);
       }
     });
   }, []);
@@ -80,6 +82,8 @@ export default function Home() {
 
     setLaden(false);
   }
+
+  if (!authGeprueft) return null;
 
   return (
     <div style={{ maxWidth: 700, margin: "60px auto", fontFamily: "sans-serif", padding: "0 20px" }}>
