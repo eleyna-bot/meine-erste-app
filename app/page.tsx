@@ -55,14 +55,11 @@ export default function Home() {
     if (!datei) return;
     setLaden(true);
     setErgebnis(null);
-
     const form = new FormData();
     form.append("file", datei);
-
     const res = await fetch("/api/scan", { method: "POST", body: form });
     const daten = await res.json();
     setErgebnis(daten);
-
     if (!daten.error && userId) {
       const { error: insertFehler } = await supabase.from("invoices").insert({
         id: Date.now(),
@@ -74,113 +71,156 @@ export default function Home() {
         waehrung: daten.waehrung,
         positionen: daten.positionen,
       });
-      if (insertFehler) {
-        console.error("Supabase Insert Fehler:", insertFehler.message, insertFehler.code, insertFehler.details);
-      }
+      if (insertFehler) console.error("Insert Fehler:", insertFehler.message);
       ladeHistorie();
     }
-
     setLaden(false);
   }
 
   if (!authGeprueft) return null;
 
   return (
-    <div style={{ maxWidth: 700, margin: "60px auto", fontFamily: "sans-serif", padding: "0 20px" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-        <h1 style={{ fontSize: 28, color: "#0f172a" }}>Rechnungs-Scanner</h1>
-        <button
-          onClick={ausloggen}
-          style={{ background: "transparent", color: "#64748b", border: "1px solid #cbd5e1", borderRadius: 8, padding: "8px 16px", cursor: "pointer", fontSize: 14 }}
-        >
-          Ausloggen
-        </button>
-      </div>
-      <p style={{ color: "#666", marginBottom: 32 }}>Lade eine Rechnung hoch – die KI liest die Daten automatisch aus.</p>
-
-      <div style={{ border: "2px dashed #ccc", borderRadius: 12, padding: 32, textAlign: "center", marginBottom: 24 }}>
-        <input
-          type="file"
-          accept="image/*,application/pdf"
-          onChange={(e) => setDatei(e.target.files?.[0] ?? null)}
-          style={{ marginBottom: 16, display: "block", margin: "0 auto 16px" }}
-        />
-        {datei && <p style={{ color: "#444", marginBottom: 16 }}>Ausgewählt: {datei.name}</p>}
-        <button
-          onClick={scannen}
-          disabled={!datei || laden}
-          style={{
-            background: datei && !laden ? "#2563eb" : "#ccc",
-            color: "white",
-            border: "none",
-            borderRadius: 8,
-            padding: "12px 28px",
-            fontSize: 16,
-            cursor: datei && !laden ? "pointer" : "not-allowed",
-          }}
-        >
-          {laden ? "Wird analysiert..." : "Rechnung scannen"}
-        </button>
+    <>
+      {/* Hintergrund */}
+      <div className="bg-scene">
+        <div className="aurora-l" />
+        <div className="aurora-l2" />
+        <div className="aurora-r" />
+        <div className="aurora-r2" />
+        <div className="aurora-mid" />
+        <div className="bg-grid" />
       </div>
 
-      {ergebnis?.demo && (
-        <div style={{ background: "#fffbeb", border: "1px solid #f59e0b", borderRadius: 10, padding: "12px 20px", marginBottom: 16, color: "#92400e" }}>
-          Demo-Modus aktiv – KI-Antwort konnte nicht geladen werden. Es werden Beispieldaten angezeigt.
+      <div style={{ position: "relative", zIndex: 1, minHeight: "100vh" }}>
+
+        {/* Header */}
+        <div className="header">
+          <div className="logo">⚡ Rechnungs-Scanner</div>
+          <div className="nav">
+            <span className="nav-item active">Übersicht</span>
+            <span className="nav-item">Scans</span>
+            <span className="nav-item">Einstellungen</span>
+          </div>
+          <button className="logout-btn" onClick={ausloggen}>Abmelden</button>
         </div>
-      )}
 
-      {ergebnis && !ergebnis.error && (
-        <div style={{ background: "#ffffff", borderRadius: 12, padding: 28, border: "1px solid #cbd5e1", color: "#1e293b", marginBottom: 32 }}>
-          <h2 style={{ marginBottom: 20, fontSize: 20, color: "#0f172a" }}>Erkannte Rechnungsdaten</h2>
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <tbody>
+        {/* Hero */}
+        <div className="hero">
+          <h1>
+            Rechnungen automatisch<br />
+            <span className="grad">erfassen.</span>
+          </h1>
+          <p>Lade eine Rechnung hoch — die KI extrahiert alle Daten strukturiert, sicher und in Sekunden.</p>
+        </div>
+
+        {/* Upload */}
+        <div className="upload-wrap">
+          <div className="upload-card">
+            <div className="upload-icon-ring">☁️</div>
+            {datei
+              ? <p className="file-chosen">{datei.name}</p>
+              : <>
+                  <p className="upload-title">Datei hierher ziehen oder klicken</p>
+                  <p className="upload-sub">JPG, PNG, PDF · bis 20 MB</p>
+                </>
+            }
+            <label className="file-select-label">
+              Datei auswählen
+              <input type="file" accept="image/*,application/pdf" onChange={(e) => setDatei(e.target.files?.[0] ?? null)} style={{ display: "none" }} />
+            </label>
+            <br />
+            <button className="scan-btn" onClick={scannen} disabled={!datei || laden}>
+              ⚡ {laden ? "Wird analysiert..." : "Rechnung scannen"}
+            </button>
+          </div>
+        </div>
+
+        {/* Demo-Banner */}
+        {ergebnis?.demo && (
+          <div className="demo-banner">
+            <div className="demo-banner-inner">
+              Demo-Modus aktiv — KI-Antwort konnte nicht geladen werden. Es werden Beispieldaten angezeigt.
+            </div>
+          </div>
+        )}
+
+        {/* Fehler */}
+        {ergebnis?.error && (
+          <div className="error-wrap">
+            <div className="error-inner">Fehler: {ergebnis.error}</div>
+          </div>
+        )}
+
+        {/* Ergebnis — nur wenn wirklich gescannt */}
+        {ergebnis && !ergebnis.error && (
+          <div className="result-wrap">
+            <div className="result-card">
+              <div className="result-head">
+                <span className="result-title">Erkannte Daten</span>
+                <span className="badge">KI extrahiert</span>
+              </div>
               {[
-                ["Absender / Firma", ergebnis.absender],
+                ["Absender", ergebnis.absender],
                 ["Rechnungsdatum", ergebnis.rechnungsdatum],
                 ["Rechnungsnummer", ergebnis.rechnungsnummer],
                 ["Gesamtbetrag", ergebnis.gesamtbetrag ? `${ergebnis.gesamtbetrag} ${ergebnis.waehrung ?? ""}` : null],
               ].map(([label, wert]) => (
-                <tr key={label} style={{ borderBottom: "1px solid #e2e8f0" }}>
-                  <td style={{ padding: "10px 0", color: "#475569", width: 180, fontWeight: 500 }}>{label}</td>
-                  <td style={{ padding: "10px 0", color: "#0f172a", fontWeight: 600 }}>{wert ?? "–"}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-
-          {ergebnis.positionen && ergebnis.positionen.length > 0 && (
-            <div style={{ marginTop: 24 }}>
-              <h3 style={{ fontSize: 16, marginBottom: 12, color: "#0f172a" }}>Positionen</h3>
-              {ergebnis.positionen.map((p, i) => (
-                <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid #e2e8f0", color: "#1e293b" }}>
-                  <span>{p.beschreibung}</span>
-                  <span style={{ fontWeight: 600, color: "#0f172a" }}>{p.betrag}</span>
+                <div key={label} className="result-row">
+                  <span className="result-label">{label}</span>
+                  <span className="result-value">{wert ?? "–"}</span>
                 </div>
               ))}
+              {ergebnis.positionen && ergebnis.positionen.length > 0 && (
+                <>
+                  <p className="pos-title">Positionen</p>
+                  {ergebnis.positionen.map((p, i) => (
+                    <div key={i} className="pos-row">
+                      <span className="pos-name">{p.beschreibung}</span>
+                      <span className="pos-amount">{p.betrag}</span>
+                    </div>
+                  ))}
+                </>
+              )}
             </div>
-          )}
-        </div>
-      )}
+          </div>
+        )}
 
-      {ergebnis?.error && (
-        <div style={{ background: "#fef2f2", borderRadius: 12, padding: 20, color: "#dc2626", marginBottom: 32 }}>
-          Fehler: {ergebnis.error}
-        </div>
-      )}
-
-      {historie.length > 0 && (
-        <div style={{ marginTop: 16 }}>
-          <h2 style={{ fontSize: 20, marginBottom: 16, color: "#0f172a" }}>Bisherige Scans</h2>
-          {historie.map((eintrag: Ergebnis & { id?: number }, i) => (
-            <div key={i} style={{ background: "#f8fafc", borderRadius: 10, padding: 16, marginBottom: 12, border: "1px solid #e2e8f0" }}>
-              <div style={{ fontWeight: 600, color: "#0f172a", fontSize: 16 }}>{eintrag.absender ?? "Unbekannt"}</div>
-              <div style={{ color: "#64748b", fontSize: 14, marginTop: 6 }}>
-                {eintrag.rechnungsdatum ?? "–"} &nbsp;|&nbsp; # {eintrag.rechnungsnummer ?? "–"} &nbsp;|&nbsp; {eintrag.gesamtbetrag ?? "–"} {eintrag.waehrung ?? ""}
+        {/* Verlauf */}
+        {historie.length > 0 && (
+          <div className="history-wrap">
+            <div className="history-head">
+              <h2>Bisherige Scans</h2>
+              <span className="history-count">{historie.length} {historie.length === 1 ? "Eintrag" : "Einträge"}</span>
+            </div>
+            {historie.map((eintrag: Ergebnis & { id?: number }, i) => (
+              <div key={i} className="history-card">
+                <div>
+                  <div className="history-name">{eintrag.absender ?? "Unbekannt"}</div>
+                  <div className="history-meta">📅 {eintrag.rechnungsdatum ?? "–"} &nbsp;·&nbsp; # {eintrag.rechnungsnummer ?? "–"}</div>
+                </div>
+                <span className="history-amount">{eintrag.gesamtbetrag ? `${eintrag.gesamtbetrag} ${eintrag.waehrung ?? ""}` : "–"}</span>
               </div>
+            ))}
+          </div>
+        )}
+
+        {/* Footer Badges */}
+        <div className="footer-wrap">
+          {[
+            ["🛡️", "Sicher & DSGVO-konform", "Deine Daten sind geschützt."],
+            ["⚡", "In Sekunden erfasst", "KI-gestützt & blitzschnell."],
+            ["✅", "Hohe Genauigkeit", "Strukturierte Ergebnisse."],
+            ["☁️", "Überall verfügbar", "Webbasiert & flexibel."],
+          ].map(([icon, label, sub]) => (
+            <div key={label} className="footer-badge">
+              <div className="footer-icon-ring">{icon}</div>
+              <div className="footer-label">{label}</div>
+              <div className="footer-sublabel">{sub}</div>
             </div>
           ))}
         </div>
-      )}
-    </div>
+
+      </div>
+    </>
   );
 }
