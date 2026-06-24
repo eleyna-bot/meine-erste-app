@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { supabase } from "../lib/supabase";
 
 type Position = { beschreibung: string; betrag: string };
 type Ergebnis = {
@@ -18,6 +19,20 @@ export default function Home() {
   const [datei, setDatei] = useState<File | null>(null);
   const [laden, setLaden] = useState(false);
   const [ergebnis, setErgebnis] = useState<Ergebnis | null>(null);
+  const [historie, setHistorie] = useState<Ergebnis[]>([]);
+
+  useEffect(() => {
+    ladeHistorie();
+  }, []);
+
+  async function ladeHistorie() {
+    const { data } = await supabase
+      .from("invoices")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(10);
+    if (data) setHistorie(data);
+  }
 
   async function scannen() {
     if (!datei) return;
@@ -30,12 +45,29 @@ export default function Home() {
     const res = await fetch("/api/scan", { method: "POST", body: form });
     const daten = await res.json();
     setErgebnis(daten);
+
+    if (!daten.error) {
+      const { error: insertFehler } = await supabase.from("invoices").insert({
+        id: Date.now(),
+        absender: daten.absender,
+        rechnungsdatum: daten.rechnungsdatum,
+        rechnungsnummer: daten.rechnungsnummer,
+        gesamtbetrag: daten.gesamtbetrag,
+        waehrung: daten.waehrung,
+        positionen: daten.positionen,
+      });
+      if (insertFehler) {
+        console.error("Supabase Insert Fehler:", insertFehler.message, insertFehler.code, insertFehler.details, insertFehler.hint);
+      }
+      ladeHistorie();
+    }
+
     setLaden(false);
   }
 
   return (
     <div style={{ maxWidth: 700, margin: "60px auto", fontFamily: "sans-serif", padding: "0 20px" }}>
-      <h1 style={{ fontSize: 28, marginBottom: 8 }}>Rechnungs-Scanner</h1>
+      <h1 style={{ fontSize: 28, marginBottom: 8, color: "#0f172a" }}>Rechnungs-Scanner</h1>
       <p style={{ color: "#666", marginBottom: 32 }}>Lade eine Rechnung hoch – die KI liest die Daten automatisch aus.</p>
 
       <div style={{ border: "2px dashed #ccc", borderRadius: 12, padding: 32, textAlign: "center", marginBottom: 24 }}>
@@ -70,7 +102,7 @@ export default function Home() {
       )}
 
       {ergebnis && !ergebnis.error && (
-        <div style={{ background: "#ffffff", borderRadius: 12, padding: 28, border: "1px solid #cbd5e1", color: "#1e293b" }}>
+        <div style={{ background: "#ffffff", borderRadius: 12, padding: 28, border: "1px solid #cbd5e1", color: "#1e293b", marginBottom: 32 }}>
           <h2 style={{ marginBottom: 20, fontSize: 20, color: "#0f172a" }}>Erkannte Rechnungsdaten</h2>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <tbody>
@@ -103,8 +135,22 @@ export default function Home() {
       )}
 
       {ergebnis?.error && (
-        <div style={{ background: "#fef2f2", borderRadius: 12, padding: 20, color: "#dc2626" }}>
+        <div style={{ background: "#fef2f2", borderRadius: 12, padding: 20, color: "#dc2626", marginBottom: 32 }}>
           Fehler: {ergebnis.error}
+        </div>
+      )}
+
+      {historie.length > 0 && (
+        <div style={{ marginTop: 16 }}>
+          <h2 style={{ fontSize: 20, marginBottom: 16, color: "#ffffff" }}>Bisherige Scans</h2>
+          {historie.map((eintrag: Ergebnis & { id?: number }, i) => (
+            <div key={i} style={{ background: "#1e293b", borderRadius: 10, padding: 16, marginBottom: 12, border: "1px solid #334155" }}>
+              <div style={{ fontWeight: 600, color: "#f1f5f9", fontSize: 16 }}>{eintrag.absender ?? "Unbekannt"}</div>
+              <div style={{ color: "#94a3b8", fontSize: 14, marginTop: 6 }}>
+                📅 {eintrag.rechnungsdatum ?? "–"} &nbsp;|&nbsp; # {eintrag.rechnungsnummer ?? "–"} &nbsp;|&nbsp; 💶 {eintrag.gesamtbetrag ?? "–"} {eintrag.waehrung ?? ""}
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>
