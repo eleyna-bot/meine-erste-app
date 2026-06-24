@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { supabase } from "../lib/supabase";
 
 type Position = { beschreibung: string; betrag: string };
@@ -16,13 +17,22 @@ type Ergebnis = {
 };
 
 export default function Home() {
+  const router = useRouter();
   const [datei, setDatei] = useState<File | null>(null);
   const [laden, setLaden] = useState(false);
   const [ergebnis, setErgebnis] = useState<Ergebnis | null>(null);
   const [historie, setHistorie] = useState<Ergebnis[]>([]);
+  const [userId, setUserId] = useState<string | null>(null);
 
   useEffect(() => {
-    ladeHistorie();
+    supabase.auth.getSession().then(({ data }) => {
+      if (!data.session) {
+        router.push("/login");
+      } else {
+        setUserId(data.session.user.id);
+        ladeHistorie();
+      }
+    });
   }, []);
 
   async function ladeHistorie() {
@@ -32,6 +42,11 @@ export default function Home() {
       .order("created_at", { ascending: false })
       .limit(10);
     if (data) setHistorie(data);
+  }
+
+  async function ausloggen() {
+    await supabase.auth.signOut();
+    router.push("/login");
   }
 
   async function scannen() {
@@ -46,9 +61,10 @@ export default function Home() {
     const daten = await res.json();
     setErgebnis(daten);
 
-    if (!daten.error) {
+    if (!daten.error && userId) {
       const { error: insertFehler } = await supabase.from("invoices").insert({
         id: Date.now(),
+        user_id: userId,
         absender: daten.absender,
         rechnungsdatum: daten.rechnungsdatum,
         rechnungsnummer: daten.rechnungsnummer,
@@ -57,7 +73,7 @@ export default function Home() {
         positionen: daten.positionen,
       });
       if (insertFehler) {
-        console.error("Supabase Insert Fehler:", insertFehler.message, insertFehler.code, insertFehler.details, insertFehler.hint);
+        console.error("Supabase Insert Fehler:", insertFehler.message, insertFehler.code, insertFehler.details);
       }
       ladeHistorie();
     }
@@ -67,7 +83,15 @@ export default function Home() {
 
   return (
     <div style={{ maxWidth: 700, margin: "60px auto", fontFamily: "sans-serif", padding: "0 20px" }}>
-      <h1 style={{ fontSize: 28, marginBottom: 8, color: "#0f172a" }}>Rechnungs-Scanner</h1>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+        <h1 style={{ fontSize: 28, color: "#0f172a" }}>Rechnungs-Scanner</h1>
+        <button
+          onClick={ausloggen}
+          style={{ background: "transparent", color: "#64748b", border: "1px solid #cbd5e1", borderRadius: 8, padding: "8px 16px", cursor: "pointer", fontSize: 14 }}
+        >
+          Ausloggen
+        </button>
+      </div>
       <p style={{ color: "#666", marginBottom: 32 }}>Lade eine Rechnung hoch – die KI liest die Daten automatisch aus.</p>
 
       <div style={{ border: "2px dashed #ccc", borderRadius: 12, padding: 32, textAlign: "center", marginBottom: 24 }}>
@@ -142,12 +166,12 @@ export default function Home() {
 
       {historie.length > 0 && (
         <div style={{ marginTop: 16 }}>
-          <h2 style={{ fontSize: 20, marginBottom: 16, color: "#ffffff" }}>Bisherige Scans</h2>
+          <h2 style={{ fontSize: 20, marginBottom: 16, color: "#0f172a" }}>Bisherige Scans</h2>
           {historie.map((eintrag: Ergebnis & { id?: number }, i) => (
-            <div key={i} style={{ background: "#1e293b", borderRadius: 10, padding: 16, marginBottom: 12, border: "1px solid #334155" }}>
-              <div style={{ fontWeight: 600, color: "#f1f5f9", fontSize: 16 }}>{eintrag.absender ?? "Unbekannt"}</div>
-              <div style={{ color: "#94a3b8", fontSize: 14, marginTop: 6 }}>
-                📅 {eintrag.rechnungsdatum ?? "–"} &nbsp;|&nbsp; # {eintrag.rechnungsnummer ?? "–"} &nbsp;|&nbsp; 💶 {eintrag.gesamtbetrag ?? "–"} {eintrag.waehrung ?? ""}
+            <div key={i} style={{ background: "#f8fafc", borderRadius: 10, padding: 16, marginBottom: 12, border: "1px solid #e2e8f0" }}>
+              <div style={{ fontWeight: 600, color: "#0f172a", fontSize: 16 }}>{eintrag.absender ?? "Unbekannt"}</div>
+              <div style={{ color: "#64748b", fontSize: 14, marginTop: 6 }}>
+                {eintrag.rechnungsdatum ?? "–"} &nbsp;|&nbsp; # {eintrag.rechnungsnummer ?? "–"} &nbsp;|&nbsp; {eintrag.gesamtbetrag ?? "–"} {eintrag.waehrung ?? ""}
               </div>
             </div>
           ))}
