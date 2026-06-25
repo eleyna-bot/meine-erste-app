@@ -48,7 +48,11 @@ Wenn ein Wert nicht erkennbar ist, schreibe null. Antworte NUR mit dem JSON, kei
     const text = result.response.text().replace(/```json|```/g, "").trim();
     const data = JSON.parse(text);
     return NextResponse.json(data);
-  } catch {
-    return NextResponse.json(demo);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    if (process.env.NODE_ENV !== "production") {
+      return NextResponse.json({ ...demo, _debug_error: message });
+    }
+    return NextResponse.json({ ...demo, _debug_error: message });
   }
 }
